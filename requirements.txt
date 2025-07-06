@@ -1,0 +1,12 @@
+yfinance
+sec-edgar-api
+pandas
+numpy
+transformers
+torch
+sentence-transformers
+faiss-cpu
+PyPortfolioOpt
+fastapi
+uvicorn[standard]
+streamlit
