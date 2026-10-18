@@ -1,60 +1,78 @@
 # Neo Screener
 
-Sentiment enhanced risk screener that combines live market data, SEC risk factor text, and FinBERT sentiment to produce quick risk signals and a simple portfolio tilt.
+**An experimental financial-risk dashboard combining market data, NLP, and portfolio analytics.**
 
-This is a portfolio project built to show end to end thinking
-data ingestion, NLP, risk metrics, optimization, and a lightweight UI.
+[Source code](https://github.com/HOWITTZER99/neo_screener) · [API](src/api/main.py) · [Dashboard](src/api/dashboard.py) · [Risk logic](src/risk)
 
-## What it does
+> **Project status: prototype.** Some code paths are incomplete and an end-to-end run has not been independently verified. This repository is not a production trading, investment, or risk-management system.
 
-- Downloads recent price history for a ticker list and stores it as a parquet file
-- Pulls SEC EntityRiskFactors text for each company and saves it locally
-- Runs FinBERT sentiment scoring on the risk factor text
-- Computes a simple historical VaR signal from stored prices
-- Produces a max Sharpe weight suggestion using mean and covariance from returns
-- Exposes everything through a FastAPI service and a Streamlit dashboard
+## Why this project?
 
-Not financial advice. For learning and demo purposes only.
+Risk assessment often involves disconnected inputs: price history, regulatory disclosures, natural-language sentiment, and portfolio statistics. Neo Screener explores how those signals could be placed behind one Python API and a simple dashboard.
 
 ## Architecture
 
-- Streamlit dashboard calls the API
-- FastAPI API orchestrates the pipeline
-- Price loader pulls data via yfinance and writes parquet
-- Risk factor loader pulls text from SEC data APIs and caches text files
-- NLP service uses ProsusAI FinBERT via transformers pipeline
-- Risk module computes VaR and portfolio weights via PyPortfolioOpt
+```mermaid
+flowchart LR
+  U[Streamlit dashboard] --> A[FastAPI]
+  A --> P[yfinance price loader]
+  A --> S[SEC disclosure loader]
+  S --> N[FinBERT sentiment]
+  A --> R[Historical VaR]
+  A --> O[Portfolio optimiser]
+  P --> D[(Local Parquet cache)]
+  R --> D
+  O --> D
+```
 
-Suggested diagram to add under docs
-docs architecture.png and docs dataflow.png
+## Implemented source modules
 
-## Project structure
+| Area | Implementation | Notes |
+| --- | --- | --- |
+| Price ingestion | [`src/data/price_loader.py`](src/data/price_loader.py) | Uses yfinance and writes Parquet |
+| API | [`src/api/main.py`](src/api/main.py) | `/prices`, `/var`, `/weights`, `/sentiment` |
+| Web dashboard | [`src/api/dashboard.py`](src/api/dashboard.py) | Streamlit UI for API endpoints |
+| Sentiment | [`src/nlp/finbert_service.py`](src/nlp/finbert_service.py) | FinBERT inference on supplied text |
+| Risk | [`src/risk/var_calc.py`](src/risk/var_calc.py) | Historical VaR using an equal-weight return series |
+| Optimisation | [`src/risk/optimiser.py`](src/risk/optimiser.py) | PyPortfolioOpt integration, currently incomplete |
+| Disclosures | [`src/data/text_loader.py`](src/data/text_loader.py) | Experimental SEC data retrieval, needs validation |
 
-- src api
-  - main.py FastAPI endpoints
-  - dashboard.py Streamlit UI
-- src data
-  - price_loader.py market data ingestion and cache
-  - text_loader.py SEC risk factor ingestion and cache
-- src nlp
-  - finbert_service.py sentiment scoring
-- src risk
-  - var_calc.py historical VaR
-  - optimiser.py max Sharpe weights
-- src utils
-  - logging.py logger setup
+## Local development
 
-## Quickstart
+Requires Python 3.10+ and network access for market data and model weights.
 
-Prereqs
-- Python 3.10 plus recommended
-- Internet access on first run for model download and data fetch
-
-Create a virtual environment and install dependencies
-
-Mac and Linux
 ```bash
 python -m venv .venv
-. .venv/bin/activate
-python -m pip install --upgrade pip
+source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
+
+uvicorn src.api.main:app --reload
+# In a second terminal with the environment activated:
+streamlit run src/api/dashboard.py
+```
+
+Browse the API documentation at `http://127.0.0.1:8000/docs` and the dashboard at `http://localhost:8501`.
+
+**Important:** imports initialize FinBERT on API startup, potentially downloading model weights and consuming memory. The data and SEC disclosure endpoints require working upstream services. These commands are the intended developer entry points, not a guarantee all endpoints currently succeed.
+
+## Known limitations and planned improvements
+
+- **SEC disclosures:** replace/validate the `EntityRiskFactors` company-concept request in `text_loader.py` against actual EDGAR 10-K filings; add a compliant descriptive User-Agent, request backoff, caching, and reproducible fixture tests.
+- **Portfolio weights:** `optimiser.py` constructs an `EfficientFrontier` but does not call an optimisation method before returning weights. Also standardize annualization and explicitly document assumptions.
+- **Reliability:** add schema validation, external API error handling, unit/integration tests, CI, dependency pinning, and Docker configuration.
+- **Evaluation:** publish data-source provenance, a fixed-ticker benchmark, latency/cost measurements, sentiment evaluation, and failures.
+- **Interpretability:** explain the meaning and limitations of FinBERT confidence and of historical VaR, and separate investment signals from raw metrics.
+
+## Engineering roadmap
+
+1. Make one deterministic end-to-end run pass using recorded SEC and pricing fixtures.
+2. Implement validated portfolio optimisation and unit tests.
+3. Add caching, typed API responses, structured logs, and CI.
+4. Benchmark FastAPI performance and compare FinBERT with at least one alternative.
+5. Add a deployable demo, architecture screenshots, and a short results report.
+
+## Tech
+
+Python · FastAPI · Streamlit · PyTorch/Transformers · FinBERT · Pandas · yfinance · PyPortfolioOpt · Parquet
+
+**Disclaimer:** Educational prototype only; not financial advice. No portfolio performance or predictive accuracy is asserted.
