@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="260" viewBox="0 0 1100 260">
+<defs>
+<linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#071523"/><stop offset="1" stop-color="#102B3F"/></linearGradient>
+<linearGradient id="sig" x1="0" x2="1"><stop stop-color="#34D399"/><stop offset="1" stop-color="#60A5FA"/></linearGradient>
+<pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" stroke="#B1D8E9" stroke-opacity=".07" fill="none"/></pattern>
+</defs>
+<rect width="1100" height="260" rx="18" fill="url(#bg)"/><rect width="1100" height="260" rx="18" fill="url(#grid)"/>
+<rect x="49" y="35" width="110" height="29" rx="14" fill="#163747" stroke="#2D766D"/><circle cx="66" cy="50" r="5" fill="#34D399"/><text x="80" y="55" fill="#AFEEE4" font-family="Arial, sans-serif" font-size="12" font-weight="bold">PROTOTYPE</text>
+<text x="48" y="126" fill="#F3F8FF" font-family="Arial, sans-serif" font-size="53" font-weight="bold">NEO SCREENER</text>
+<text x="50" y="169" fill="#95DDCC" font-family="Arial, sans-serif" font-size="22">Financial data · NLP · risk analytics</text>
+<text x="52" y="207" fill="#BED0E0" font-family="Arial, sans-serif" font-size="15">FastAPI  /  FinBERT  /  Streamlit  /  Python</text>
+<path d="M655 190L705 154L756 168L808 98L861 128L921 51L982 82L1054 35" fill="none" stroke="url(#sig)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M655 190L705 154L756 168L808 98L861 128L921 51L982 82L1054 35L1054 233L655 233Z" fill="#34D399" fill-opacity=".045"/>
+<g fill="#071523" stroke="#5DE1CA" stroke-width="3"><circle cx="655" cy="190" r="6"/><circle cx="705" cy="154" r="6"/><circle cx="756" cy="168" r="6"/><circle cx="808" cy="98" r="6"/><circle cx="861" cy="128" r="6"/><circle cx="921" cy="51" r="6"/><circle cx="982" cy="82" r="6"/><circle cx="1054" cy="35" r="6"/></g>
+<text x="676" y="230" fill="#7296A9" font-family="Arial,sans-serif" font-size="12">EXPERIMENTAL · NOT INVESTMENT ADVICE</text>
+</svg>
