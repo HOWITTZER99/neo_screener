@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="docs/assets/neo-screener-cover.svg" alt="Neo Screener: financial data, NLP and risk analytics, experimental prototype" width="100%" />
+</div>
+
 # Neo Screener
 
 **An experimental financial-risk dashboard combining market data, NLP, and portfolio analytics.**
