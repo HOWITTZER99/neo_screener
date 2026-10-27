@@ -1,0 +1,84 @@
+name: Daily engineering challenge
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: daily-engineering-challenge
+  cancel-in-progress: false
+
+jobs:
+  propose-task:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post one meaningful issue at a rotating daily hour
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const crypto = require('crypto');
+            const { owner, repo } = context.repo;
+            const indiaNow = new Date(Date.now() + 330 * 60 * 1000);
+            const day = indiaNow.toISOString().slice(0, 10);
+            const localHour = indiaNow.getUTCHours();
+            const chosenHour = crypto.createHash('sha256')
+              .update(owner + '/' + repo + ':' + day)
+              .digest()[0] % 24;
+
+            if (context.eventName !== 'workflow_dispatch' && localHour < chosenHour) {
+              core.info('Today\'s selected hour is ' + chosenHour + ':00 IST; not due yet.');
+              return;
+            }
+
+            const title = 'Daily Neo Screener engineering task: ' + day;
+            const recent = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'all', per_page: 100,
+              since: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+            });
+            if (recent.some(issue => !issue.pull_request && issue.title === title)) {
+              core.info('Task already exists for ' + day);
+              return;
+            }
+
+            const tasks = [
+              ['Reproduce the API startup', 'Run the README FastAPI command locally. Record the exact command, success output or first failure, and Python version. Do not claim the API works without a real run.'],
+              ['Test a VaR edge case', 'Inspect src/risk/var_calc.py. Write a deterministic test with constant returns and explain the expected result.'],
+              ['Make a price fixture', 'Inspect src/data/price_loader.py. Design a small offline price-data fixture and one test that does not call yfinance.'],
+              ['Check ticker validation', 'Inspect the /prices endpoint in src/api/main.py. Find one invalid input and add or propose a reproducible validation test.'],
+              ['Audit portfolio optimisation', 'Read src/risk/optimiser.py. Check whether an optimisation method runs before weights are returned; propose a failing test first.'],
+              ['Test missing market data', 'Inspect price loading and downstream usage. Write a test for an empty or missing data response with an explicit expected outcome.'],
+              ['Document the API failure path', 'Run or inspect one endpoint and document one real upstream failure path with an error response that would help callers.'],
+              ['Check SEC request requirements', 'Inspect src/data/text_loader.py. Verify User-Agent, rate limit, retry and failure handling requirements before proposing one minimal improvement.'],
+              ['Add a smoke test', 'Pick one pure function that does not need network access or model weights. Add one reproducible test and its exact command.'],
+              ['Review model startup cost', 'Inspect the FinBERT startup path. Identify when model weights load and propose a measurable lazy-loading test.'],
+              ['Explain historical VaR', 'Review the VaR code and README. Identify one assumption that should be documented, with a concrete example.'],
+              ['Improve a deterministic boundary test', 'Choose a numeric function from src/risk. Write a second test at a meaningful boundary, not a cosmetic assertion.'],
+              ['Check API response errors', 'Inspect an API route. Propose one specific error response test for invalid inputs or failed dependencies.'],
+              ['Verify portfolio weights', 'Inspect the optimiser and propose tests for finite outputs, valid bounds and weights summing to one if feasible.']
+            ];
+
+            const dayIndex = Math.floor(Date.parse(day + 'T00:00:00Z') / 86400000);
+            const task = tasks[dayIndex % tasks.length];
+            const body = [
+              '## Today\'s small engineering task',
+              '**' + task[0] + '**',
+              '',
+              task[1],
+              '',
+              '### Completion evidence',
+              '- Link the actual commit or pull request, if code changes were made.',
+              '- Include the exact executed test command and result (or the error).',
+              '- Explain one thing learned in 1-2 sentences.',
+              '',
+              'This issue is generated automatically as a task suggestion. It is **not** proof of code written, tests passed, or a completed contribution.',
+              '',
+              '<!-- daily-neo-screener-task:' + day + ' -->'
+            ].join('\n');
+
+            const created = await github.rest.issues.create({ owner, repo, title, body });
+            core.info('Created issue: ' + created.data.html_url);
