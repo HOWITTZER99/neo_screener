@@ -1,4 +1,4 @@
-name: Daily engineering challenge
+name: Daily source health check
 
 on:
   schedule:
@@ -6,79 +6,73 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  issues: write
+  contents: write
 
 concurrency:
-  group: daily-engineering-challenge
+  group: daily-source-health
   cancel-in-progress: false
 
 jobs:
-  propose-task:
+  record-health:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Post one meaningful issue at a rotating daily hour
-        uses: actions/github-script@v9
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          script: |
-            const crypto = require('crypto');
-            const { owner, repo } = context.repo;
-            const indiaNow = new Date(Date.now() + 330 * 60 * 1000);
-            const day = indiaNow.toISOString().slice(0, 10);
-            const localHour = indiaNow.getUTCHours();
-            const chosenHour = crypto.createHash('sha256')
-              .update(owner + '/' + repo + ':' + day)
-              .digest()[0] % 24;
+          python-version: '3.11'
 
-            if (context.eventName !== 'workflow_dispatch' && localHour < chosenHour) {
-              core.info('Today\'s selected hour is ' + chosenHour + ':00 IST; not due yet.');
-              return;
-            }
+      - name: Choose the daily rotating hour (Asia/Kolkata)
+        id: timing
+        env:
+          REPOSITORY: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          from datetime import datetime, timedelta, timezone
+          from hashlib import sha256
+          import os
 
-            const title = 'Daily Neo Screener engineering task: ' + day;
-            const recent = await github.paginate(github.rest.issues.listForRepo, {
-              owner, repo, state: 'all', per_page: 100,
-              since: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-            });
-            if (recent.some(issue => !issue.pull_request && issue.title === title)) {
-              core.info('Task already exists for ' + day);
-              return;
-            }
+          now = datetime.now(timezone(timedelta(hours=5, minutes=30)))
+          day = now.date().isoformat()
+          selected_hour = sha256((os.environ["REPOSITORY"] + ":" + day).encode()).digest()[0] % 24
+          due = os.environ["EVENT_NAME"] == "workflow_dispatch" or now.hour >= selected_hour
+          print(f"day={day}")
+          print(f"hour={selected_hour}")
+          print(f"due={'true' if due else 'false'}")
+          PY
 
-            const tasks = [
-              ['Reproduce the API startup', 'Run the README FastAPI command locally. Record the exact command, success output or first failure, and Python version. Do not claim the API works without a real run.'],
-              ['Test a VaR edge case', 'Inspect src/risk/var_calc.py. Write a deterministic test with constant returns and explain the expected result.'],
-              ['Make a price fixture', 'Inspect src/data/price_loader.py. Design a small offline price-data fixture and one test that does not call yfinance.'],
-              ['Check ticker validation', 'Inspect the /prices endpoint in src/api/main.py. Find one invalid input and add or propose a reproducible validation test.'],
-              ['Audit portfolio optimisation', 'Read src/risk/optimiser.py. Check whether an optimisation method runs before weights are returned; propose a failing test first.'],
-              ['Test missing market data', 'Inspect price loading and downstream usage. Write a test for an empty or missing data response with an explicit expected outcome.'],
-              ['Document the API failure path', 'Run or inspect one endpoint and document one real upstream failure path with an error response that would help callers.'],
-              ['Check SEC request requirements', 'Inspect src/data/text_loader.py. Verify User-Agent, rate limit, retry and failure handling requirements before proposing one minimal improvement.'],
-              ['Add a smoke test', 'Pick one pure function that does not need network access or model weights. Add one reproducible test and its exact command.'],
-              ['Review model startup cost', 'Inspect the FinBERT startup path. Identify when model weights load and propose a measurable lazy-loading test.'],
-              ['Explain historical VaR', 'Review the VaR code and README. Identify one assumption that should be documented, with a concrete example.'],
-              ['Improve a deterministic boundary test', 'Choose a numeric function from src/risk. Write a second test at a meaningful boundary, not a cosmetic assertion.'],
-              ['Check API response errors', 'Inspect an API route. Propose one specific error response test for invalid inputs or failed dependencies.'],
-              ['Verify portfolio weights', 'Inspect the optimiser and propose tests for finite outputs, valid bounds and weights summing to one if feasible.']
-            ];
+      - name: Run checks and write dated report
+        if: steps.timing.outputs.due == 'true'
+        run: python .github/scripts/record_daily_health.py --date "${{ steps.timing.outputs.day }}"
 
-            const dayIndex = Math.floor(Date.parse(day + 'T00:00:00Z') / 86400000);
-            const task = tasks[dayIndex % tasks.length];
-            const body = [
-              '## Today\'s small engineering task',
-              '**' + task[0] + '**',
-              '',
-              task[1],
-              '',
-              '### Completion evidence',
-              '- Link the actual commit or pull request, if code changes were made.',
-              '- Include the exact executed test command and result (or the error).',
-              '- Explain one thing learned in 1-2 sentences.',
-              '',
-              'This issue is generated automatically as a task suggestion. It is **not** proof of code written, tests passed, or a completed contribution.',
-              '',
-              '<!-- daily-neo-screener-task:' + day + ' -->'
-            ].join('\n');
+      - name: Commit today's report directly to main
+        if: steps.timing.outputs.due == 'true'
+        env:
+          DAY: ${{ steps.timing.outputs.day }}
+        shell: bash
+        run: |
+          report="docs/daily_checks/$DAY.md"
+          if [ ! -f "$report" ]; then
+            echo "Expected report was not generated"
+            exit 1
+          fi
+          if git ls-files --error-unmatch "$report" >/dev/null 2>&1; then
+            echo "Today's report is already committed"
+            exit 0
+          fi
 
-            const created = await github.rest.issues.create({ owner, repo, title, body });
-            core.info('Created issue: ' + created.data.html_url);
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "$report"
+          if git diff --cached --quiet; then
+            echo "No new report to commit"
+            exit 0
+          fi
+          git commit -m "chore: record repository checks for $DAY"
+          git pull --rebase origin main
+          git push origin HEAD:main
