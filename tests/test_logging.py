@@ -47,5 +47,32 @@ class TestSetupLogger(unittest.TestCase):
                 handler.close()
 
 
+    def test_does_not_forward_records_to_root_logger(self):
+        """A configured root logger must not duplicate application messages."""
+        import io
+        from unittest.mock import patch
+
+        name = "neo_screener.test_logging.no_root_propagation"
+        logger = logging.getLogger(name)
+        local_output = io.StringIO()
+        root_output = io.StringIO()
+        root_handler = logging.StreamHandler(root_output)
+        try:
+            with patch("sys.stdout", local_output), patch.object(
+                logging.getLogger(), "handlers", [root_handler]
+            ):
+                setup_logger(name)
+                logger.info("single output")
+
+            self.assertEqual(local_output.getvalue().count("single output"), 1)
+            self.assertEqual(root_output.getvalue(), "")
+            self.assertFalse(logger.propagate)
+        finally:
+            for handler in list(logger.handlers):
+                logger.removeHandler(handler)
+                handler.close()
+            root_handler.close()
+
+
 if __name__ == "__main__":
     unittest.main()
