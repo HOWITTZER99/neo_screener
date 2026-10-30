@@ -76,3 +76,16 @@ jobs:
           git commit -m "chore: record repository checks for $DAY"
           git pull --rebase origin main
           git push origin HEAD:main
+
+      - name: Mark failed or missing checks as a failed workflow
+        if: steps.timing.outputs.due == 'true'
+        env:
+          DAY: ${{ steps.timing.outputs.day }}
+        shell: bash
+        run: |
+          report="docs/daily_checks/$DAY.md"
+          if grep -Fq '| **FAIL** |' "$report" || grep -Fq '| **NOT RUN** |' "$report"; then
+            echo "::error::Repository checks failed or did not run. Review $report."
+            exit 1
+          fi
+          echo "All repository checks passed."
