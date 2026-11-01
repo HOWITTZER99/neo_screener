@@ -41,6 +41,18 @@ flowchart LR
 | Optimisation | [`src/risk/optimiser.py`](src/risk/optimiser.py) | PyPortfolioOpt integration, currently incomplete |
 | Disclosures | [`src/data/text_loader.py`](src/data/text_loader.py) | Experimental SEC data retrieval, needs validation |
 
+## Historical VaR: what the number means
+
+[`hist_var`](src/risk/var_calc.py) estimates **historical Value at Risk** from the price data in `data/raw_prices.parquet` (or a supplied Parquet path). Its current calculation:
+
+1. Selects the `Close` columns, computes each asset's percentage price change, and drops dates with missing returns.
+2. Takes the simple **equal-weight average** of the remaining asset returns on each date.
+3. Returns `-percentile(returns, 100 * (1 - alpha))`, rounded to four decimal places. The default `alpha=0.95` uses the **5th percentile**.
+
+For example, with five equally weighted portfolio returns of `[-0.04, -0.02, 0.01, 0.03, 0.05]`, NumPy's default linear interpolation gives a 5th percentile of `-0.036`. The function therefore reports `0.036`, interpreted as an **estimated 3.6% loss threshold per observation period**. This is a calculation example, not a forecast or backtested result.
+
+**Important limitations:** The period is determined by the input data frequency (typically daily), not automatically annualized. The result is a fraction, not a percent; `0.036` means 3.6%. Equal weights are assumed regardless of any portfolio weights elsewhere in the app. The implementation does not validate `alpha`, reject an empty return series, or enforce a nonnegative result; an all-positive sample can produce a negative VaR. With small or biased historical samples, the percentile is especially unstable. VaR is **not a maximum possible loss** and does not quantify losses beyond the selected percentile. Do not use this prototype metric for trading or risk limits without data validation, unit tests, and backtesting.
+
 ## Local development
 
 Requires Python 3.10+ and network access for market data and model weights.
