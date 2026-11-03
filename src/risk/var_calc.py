@@ -6,7 +6,7 @@ log = setup_logger(__name__)
 def _returns(path: Path) -> pd.Series:
     df = pd.read_parquet(path)
     closes = df.xs("Close", level=1, axis=1)
-    return closes.pct_change().dropna().mean(axis=1)
+    return closes.pct_change(fill_method=None).dropna().mean(axis=1)
 
 def hist_var(price_file="data/raw_prices.parquet", alpha=0.95) -> float:
     if not 0 < alpha < 1:
