@@ -74,7 +74,7 @@ class TestHistoricalVar(unittest.TestCase):
         frame = Mock()
         frame.xs.return_value = closes
         read_parquet = Mock(return_value=frame)
-        namespace = {"pd": SimpleNamespace(read_parquet=read_parquet)}
+        namespace = {"pd": SimpleNamespace(read_parquet=read_parquet, Series=object), "Path": Path}
         isolated = ast.fix_missing_locations(ast.Module(body=[function], type_ignores=[]))
         exec(compile(isolated, str(SOURCE), "exec"), namespace)
 
