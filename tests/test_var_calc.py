@@ -61,5 +61,32 @@ class TestHistoricalVar(unittest.TestCase):
         percentile.assert_not_called()
 
 
+    def test_missing_prices_are_not_forward_filled(self):
+        """Calculate returns only from observed prices, not filled gaps."""
+        tree = ast.parse(SOURCE.read_text(encoding="utf-8"), filename=str(SOURCE))
+        function = next(
+            node for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "_returns"
+        )
+        closes = Mock()
+        expected = object()
+        closes.pct_change.return_value.dropna.return_value.mean.return_value = expected
+        frame = Mock()
+        frame.xs.return_value = closes
+        read_parquet = Mock(return_value=frame)
+        namespace = {"pd": SimpleNamespace(read_parquet=read_parquet)}
+        isolated = ast.fix_missing_locations(ast.Module(body=[function], type_ignores=[]))
+        exec(compile(isolated, str(SOURCE), "exec"), namespace)
+
+        result = namespace["_returns"](Path("prices.parquet"))
+
+        self.assertIs(result, expected)
+        read_parquet.assert_called_once_with(Path("prices.parquet"))
+        frame.xs.assert_called_once_with("Close", level=1, axis=1)
+        closes.pct_change.assert_called_once_with(fill_method=None)
+        closes.pct_change.return_value.dropna.assert_called_once_with()
+        closes.pct_change.return_value.dropna.return_value.mean.assert_called_once_with(axis=1)
+
+
 if __name__ == "__main__":
     unittest.main()
