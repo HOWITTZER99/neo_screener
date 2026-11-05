@@ -9,4 +9,5 @@ def _moments(path: Path):
 def max_sharpe(price_file="data/raw_prices.parquet"):
     mu, cov = _moments(Path(price_file))
     ef = EfficientFrontier(mu, cov)
+    ef.max_sharpe()
     return ef.clean_weights()
