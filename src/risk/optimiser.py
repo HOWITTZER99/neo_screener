@@ -4,7 +4,7 @@ from pypfopt import EfficientFrontier
 def _moments(path: Path):
     df = pd.read_parquet(path)
     closes = df.xs("Close", level=1, axis=1)
-    rets = closes.pct_change().dropna()
+    rets = closes.pct_change(fill_method=None).dropna()
     return rets.mean(), rets.cov()
 def max_sharpe(price_file="data/raw_prices.parquet"):
     mu, cov = _moments(Path(price_file))
