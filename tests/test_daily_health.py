@@ -52,5 +52,30 @@ class TestDailyHealthReport(unittest.TestCase):
             self.assertEqual(report.read_text(encoding="utf-8"), "original daily report\n")
 
 
+    def test_failing_unittest_is_recorded_as_failure(self):
+        """A failed regression test must mark the daily report as failed."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "src" / "healthy.py"
+            source.parent.mkdir(parents=True)
+            source.write_text("VALUE = 1\n", encoding="utf-8")
+            test_file = root / "tests" / "test_failure.py"
+            test_file.parent.mkdir(parents=True)
+            test_file.write_text(
+                "import unittest\n"
+                "class TestFailure(unittest.TestCase):\n"
+                "    def test_fails(self):\n"
+                "        self.assertEqual(1, 2)\n",
+                encoding="utf-8",
+            )
+
+            report = self.run_report(root).read_text(encoding="utf-8")
+
+            self.assertIn("| Parse all `src/**/*.py` with Python AST | **PASS** |", report)
+            self.assertIn("| `python -m compileall -q src` | **PASS** |", report)
+            self.assertIn("| `python -m unittest discover -s tests -p 'test_*.py' -v` | **FAIL** |", report)
+            self.assertIn("FAILED (failures=1)", report)
+
+
 if __name__ == "__main__":
     unittest.main()
