@@ -4,6 +4,7 @@ import argparse
 import ast
 from datetime import date
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -50,7 +51,17 @@ def main():
         tests_passed, test_output = run_check(
             [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"], root
         )
-        test_status = "PASS" if tests_passed else "FAIL"
+        # A successful unittest exit can still mean no tests actually ran.
+        ran = re.search(r"^Ran (\\d+) tests? in ", test_output, re.MULTILINE)
+        skipped = re.search(r"^OK \\(skipped=(\\d+)\\)$", test_output, re.MULTILINE)
+        all_skipped = (
+            tests_passed and ran is not None and (
+                int(ran.group(1)) == 0 or (
+                    skipped is not None and int(skipped.group(1)) == int(ran.group(1))
+                )
+            )
+        )
+        test_status = "NOT RUN" if all_skipped else ("PASS" if tests_passed else "FAIL")
     else:
         test_status, test_output = "NOT RUN", "No unittest test_*.py files found."
 
