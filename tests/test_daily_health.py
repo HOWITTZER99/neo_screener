@@ -101,5 +101,23 @@ class TestDailyHealthReport(unittest.TestCase):
             self.assertIn("skipped=1", report)
 
 
+    def test_zero_discovered_unittests_are_not_reported_as_passed(self):
+        """An empty test module must not produce a green health report."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "src" / "healthy.py"
+            source.parent.mkdir(parents=True)
+            source.write_text("VALUE = 1\n", encoding="utf-8")
+            test_file = root / "tests" / "test_empty.py"
+            test_file.parent.mkdir(parents=True)
+            test_file.write_text("# No test cases are defined.\n", encoding="utf-8")
+
+            report = self.run_report(root).read_text(encoding="utf-8")
+
+            self.assertIn("| `python -m unittest discover -s tests -p 'test_*.py' -v` | **NOT RUN** |", report)
+            self.assertIn("Ran 0 tests", report)
+
+
+
 if __name__ == "__main__":
     unittest.main()
