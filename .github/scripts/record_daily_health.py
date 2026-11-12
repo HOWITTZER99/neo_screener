@@ -47,6 +47,7 @@ def main():
 
     compiled, compile_output = run_check([sys.executable, "-m", "compileall", "-q", "src"], root)
     test_directory = root / "tests"
+    skipped_count = "not run"
     if test_directory.exists() and list(test_directory.rglob("test_*.py")):
         tests_passed, test_output = run_check(
             [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"], root
@@ -54,6 +55,7 @@ def main():
         # A successful unittest exit can still mean no tests actually ran.
         ran = re.search(r"^Ran (\d+) tests? in ", test_output, re.MULTILINE)
         skipped = re.search(r"^OK \([^\n]*\bskipped=(\d+)(?:,|\))", test_output, re.MULTILINE)
+        skipped_count = skipped.group(1) if skipped else "0"
         all_skipped = (
             tests_passed and ran is not None and (
                 int(ran.group(1)) == 0 or (
@@ -91,6 +93,7 @@ def main():
 | Parse all `src/**/*.py` with Python AST | **{ast_status}** |
 | `python -m compileall -q src` | **{compile_status}** |
 | `python -m unittest discover -s tests -p 'test_*.py' -v` | **{test_status}** |
+| Unit tests skipped (when reported) | **{skipped_count}** |
 
 ## Python parsing details
 
