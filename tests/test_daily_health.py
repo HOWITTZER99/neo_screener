@@ -119,5 +119,33 @@ class TestDailyHealthReport(unittest.TestCase):
 
 
 
+    def test_partially_skipped_unittests_report_skip_count(self):
+        """A passing suite with one skipped test must expose its skip count."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "src" / "healthy.py"
+            source.parent.mkdir(parents=True)
+            source.write_text("VALUE = 1\n", encoding="utf-8")
+            test_file = root / "tests" / "test_mixed.py"
+            test_file.parent.mkdir(parents=True)
+            test_file.write_text(
+                "import unittest\n"
+                "class Mixed(unittest.TestCase):\n"
+                "    def test_passes(self):\n"
+                "        self.assertEqual(2 + 2, 4)\n"
+                "    @unittest.skip('optional dependency unavailable')\n"
+                "    def test_optional(self):\n"
+                "        self.fail('should not execute')\n",
+                encoding="utf-8",
+            )
+
+            report = self.run_report(root).read_text(encoding="utf-8")
+
+            self.assertIn("| `python -m unittest discover -s tests -p 'test_*.py' -v` | **PASS** |", report)
+            self.assertIn("| Unit tests skipped (when reported) | **1** |", report)
+            self.assertIn("Ran 2 tests", report)
+            self.assertIn("skipped=1", report)
+
+
 if __name__ == "__main__":
     unittest.main()
