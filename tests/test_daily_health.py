@@ -147,5 +147,31 @@ class TestDailyHealthReport(unittest.TestCase):
             self.assertIn("skipped=1", report)
 
 
+
+    def test_failing_suite_reports_skipped_count(self):
+        """Skipped tests remain visible when another test fails."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "src" / "healthy.py"
+            source.parent.mkdir(parents=True)
+            source.write_text("VALUE = 1\n", encoding="utf-8")
+            test_file = root / "tests" / "test_mixed_failure.py"
+            test_file.parent.mkdir(parents=True)
+            test_file.write_text(
+                "import unittest\n"
+                "class MixedFailure(unittest.TestCase):\n"
+                "    @unittest.skip('dependency unavailable')\n"
+                "    def test_optional(self):\n"
+                "        self.fail('should not execute')\n"
+                "    def test_failure(self):\n"
+                "        self.fail('intentional failure')\n",
+                encoding="utf-8",
+            )
+            report = self.run_report(root).read_text(encoding="utf-8")
+            self.assertIn("| `python -m unittest discover -s tests -p 'test_*.py' -v` | **FAIL** |", report)
+            self.assertIn("| Unit tests skipped (when reported) | **1** |", report)
+            self.assertIn("FAILED (failures=1, skipped=1)", report)
+
+
 if __name__ == "__main__":
     unittest.main()
