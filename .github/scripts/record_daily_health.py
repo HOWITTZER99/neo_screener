@@ -54,7 +54,7 @@ def main():
         )
         # A successful unittest exit can still mean no tests actually ran.
         ran = re.search(r"^Ran (\d+) tests? in ", test_output, re.MULTILINE)
-        skipped = re.search(r"^OK \([^\n]*\bskipped=(\d+)(?:,|\))", test_output, re.MULTILINE)
+        skipped = re.search(r"^(?:OK|FAILED) \([^\n]*\bskipped=(\d+)(?:,|\))", test_output, re.MULTILINE)
         skipped_count = skipped.group(1) if skipped else "0"
         all_skipped = (
             tests_passed and ran is not None and (
