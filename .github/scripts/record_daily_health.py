@@ -10,7 +10,12 @@ import sys
 
 
 def run_check(command, root):
-    result = subprocess.run(command, cwd=root, text=True, capture_output=True, check=False)
+    try:
+        result = subprocess.run(
+            command, cwd=root, text=True, capture_output=True, check=False, timeout=120
+        )
+    except subprocess.TimeoutExpired as exc:
+        return False, f"Timed out after {exc.timeout:g} seconds: {' '.join(command)}"
     output = (result.stdout + "\n" + result.stderr).strip()
     return result.returncode == 0, output
 
