@@ -173,5 +173,28 @@ class TestDailyHealthReport(unittest.TestCase):
             self.assertIn("FAILED (failures=1, skipped=1)", report)
 
 
+    def test_run_check_reports_subprocess_timeout(self):
+        """A hung check must fail with an actionable timeout message."""
+        import subprocess
+
+        command = [sys.executable, "-m", "unittest"]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with patch.object(
+                health.subprocess,
+                "run",
+                side_effect=subprocess.TimeoutExpired(command, 120),
+            ) as run:
+                passed, output = health.run_check(command, root)
+
+        self.assertFalse(passed)
+        self.assertIn("Timed out after 120 seconds", output)
+        self.assertIn(" ".join(command), output)
+        run.assert_called_once_with(
+            command, cwd=root, text=True, capture_output=True,
+            check=False, timeout=120,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
