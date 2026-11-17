@@ -196,5 +196,28 @@ class TestDailyHealthReport(unittest.TestCase):
         )
 
 
+
+    def test_timed_out_unittest_is_recorded_as_failure(self):
+        """A timed-out test suite must not produce a passing daily report."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "src" / "healthy.py"
+            source.parent.mkdir(parents=True)
+            source.write_text("VALUE = 1\n", encoding="utf-8")
+            test_file = root / "tests" / "test_slow.py"
+            test_file.parent.mkdir(parents=True)
+            test_file.write_text("import unittest\n", encoding="utf-8")
+
+            with patch.object(
+                health, "run_check",
+                side_effect=[(True, ""), (False, "Timed out after 120 seconds: unittest")],
+            ) as checks:
+                report = self.run_report(root).read_text(encoding="utf-8")
+
+            self.assertEqual(checks.call_count, 2)
+            self.assertIn("| `python -m compileall -q src` | **PASS** |", report)
+            self.assertIn("| `python -m unittest discover -s tests -p 'test_*.py' -v` | **FAIL** |", report)
+            self.assertIn("Timed out after 120 seconds: unittest", report)
+
 if __name__ == "__main__":
     unittest.main()
