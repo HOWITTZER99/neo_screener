@@ -16,6 +16,8 @@ def run_check(command, root):
         )
     except subprocess.TimeoutExpired as exc:
         return False, f"Timed out after {exc.timeout:g} seconds: {' '.join(command)}"
+    except OSError as exc:
+        return False, f"Could not run {command[0]}: {exc}"
     output = (result.stdout + "\n" + result.stderr).strip()
     return result.returncode == 0, output
 
