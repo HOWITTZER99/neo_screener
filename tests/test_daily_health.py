@@ -197,6 +197,26 @@ class TestDailyHealthReport(unittest.TestCase):
 
 
 
+    def test_run_check_reports_missing_executable(self):
+        """Missing executables should return a failure instead of crashing."""
+        command = ["nonexistent-health-check-executable", "--version"]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with patch.object(
+                health.subprocess,
+                "run",
+                side_effect=FileNotFoundError(2, "No such file or directory", command[0]),
+            ) as run:
+                passed, output = health.run_check(command, root)
+
+        self.assertFalse(passed)
+        self.assertIn("Could not run nonexistent-health-check-executable", output)
+        self.assertIn("No such file or directory", output)
+        run.assert_called_once_with(
+            command, cwd=root, text=True, capture_output=True,
+            check=False, timeout=120,
+        )
+
     def test_timed_out_unittest_is_recorded_as_failure(self):
         """A timed-out test suite must not produce a passing daily report."""
         with tempfile.TemporaryDirectory() as directory:
