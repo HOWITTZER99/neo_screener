@@ -74,9 +74,8 @@ def main():
     else:
         test_status, test_output = "NOT RUN", "No unittest test_*.py files found."
 
-    baseline = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=root, text=True, capture_output=True, check=False
-    ).stdout.strip() or "unavailable"
+    baseline_ok, baseline_output = run_check(["git", "rev-parse", "HEAD"], root)
+    baseline = baseline_output if baseline_ok and re.fullmatch(r"[0-9a-f]{40}", baseline_output) else "unavailable"
     ast_status = "PASS" if not failures else "FAIL"
     compile_status = "PASS" if compiled else "FAIL"
 
