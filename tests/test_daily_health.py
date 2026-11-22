@@ -271,5 +271,32 @@ class TestDailyHealthReport(unittest.TestCase):
             self.assertIn("| `python -m unittest discover -s tests -p 'test_*.py' -v` | **PASS** |", report)
             self.assertIn("Timed out after 120 seconds: compileall", report)
 
+    def test_unavailable_git_is_recorded_without_crashing(self):
+        """A missing Git executable must not prevent a useful daily report."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "src" / "healthy.py"
+            source.parent.mkdir(parents=True)
+            source.write_text("VALUE = 1\n", encoding="utf-8")
+            test_file = root / "tests" / "test_success.py"
+            test_file.parent.mkdir(parents=True)
+            test_file.write_text("# discovered test file\n", encoding="utf-8")
+
+            with patch.object(
+                health, "run_check",
+                side_effect=[
+                    (True, ""),
+                    (True, "Ran 1 test in 0.001s\n\nOK"),
+                    (False, "Could not run git: No such file or directory"),
+                ],
+            ) as checks:
+                report = self.run_report(root).read_text(encoding="utf-8")
+
+            self.assertEqual(checks.call_count, 3)
+            self.assertEqual(checks.call_args_list[-1].args[0], ["git", "rev-parse", "HEAD"])
+            self.assertIn("- Baseline commit: `unavailable`", report)
+            self.assertIn("| `python -m compileall -q src` | **PASS** |", report)
+            self.assertIn("| `python -m unittest discover -s tests -p 'test_*.py' -v` | **PASS** |", report)
+
 if __name__ == "__main__":
     unittest.main()
