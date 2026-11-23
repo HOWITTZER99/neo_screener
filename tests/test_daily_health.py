@@ -303,10 +303,10 @@ class TestDailyHealthReport(unittest.TestCase):
             root = Path(directory)
             source = root / "src" / "healthy.py"
             source.parent.mkdir(parents=True)
-            source.write_text("VALUE = 1\\n", encoding="utf-8")
+            source.write_text("VALUE = 1\n", encoding="utf-8")
             test_file = root / "tests" / "test_empty_output.py"
             test_file.parent.mkdir(parents=True)
-            test_file.write_text("# placeholder\\n", encoding="utf-8")
+            test_file.write_text("# placeholder\n", encoding="utf-8")
 
             with patch.object(
                 health, "run_check",
