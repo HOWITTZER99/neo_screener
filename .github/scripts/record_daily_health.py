@@ -70,7 +70,7 @@ def main():
                 )
             )
         )
-        test_status = "NOT RUN" if all_skipped else ("PASS" if tests_passed else "FAIL")
+        test_status = "NOT RUN" if all_skipped else ("PASS" if tests_passed and ran is not None else "FAIL")
     else:
         test_status, test_output = "NOT RUN", "No unittest test_*.py files found."
 
