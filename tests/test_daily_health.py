@@ -297,6 +297,25 @@ class TestDailyHealthReport(unittest.TestCase):
             self.assertIn("- Baseline commit: `unavailable`", report)
             self.assertIn("| `python -m compileall -q src` | **PASS** |", report)
             self.assertIn("| `python -m unittest discover -s tests -p 'test_*.py' -v` | **PASS** |", report)
+    def test_successful_command_without_unittest_summary_is_failure(self):
+        """A zero exit code alone cannot prove tests actually executed."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "src" / "healthy.py"
+            source.parent.mkdir(parents=True)
+            source.write_text("VALUE = 1\\n", encoding="utf-8")
+            test_file = root / "tests" / "test_empty_output.py"
+            test_file.parent.mkdir(parents=True)
+            test_file.write_text("# placeholder\\n", encoding="utf-8")
+
+            with patch.object(
+                health, "run_check",
+                side_effect=[(True, ""), (True, ""), (False, "git unavailable")],
+            ):
+                report = self.run_report(root).read_text(encoding="utf-8")
+
+            self.assertIn("| `python -m unittest discover -s tests -p 'test_*.py' -v` | **FAIL** |", report)
+
 
 if __name__ == "__main__":
     unittest.main()
