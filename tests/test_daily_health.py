@@ -230,11 +230,11 @@ class TestDailyHealthReport(unittest.TestCase):
 
             with patch.object(
                 health, "run_check",
-                side_effect=[(True, ""), (False, "Timed out after 120 seconds: unittest")],
+                side_effect=[(True, ""), (False, "Timed out after 120 seconds: unittest"), (False, "git unavailable")],
             ) as checks:
                 report = self.run_report(root).read_text(encoding="utf-8")
 
-            self.assertEqual(checks.call_count, 2)
+            self.assertEqual(checks.call_count, 3)
             self.assertIn("| `python -m compileall -q src` | **PASS** |", report)
             self.assertIn("| `python -m unittest discover -s tests -p 'test_*.py' -v` | **FAIL** |", report)
             self.assertIn("Timed out after 120 seconds: unittest", report)
@@ -261,11 +261,12 @@ class TestDailyHealthReport(unittest.TestCase):
                 side_effect=[
                     (False, "Timed out after 120 seconds: compileall"),
                     (True, "Ran 1 test in 0.001s\n\nOK"),
+                    (False, "git unavailable"),
                 ],
             ) as checks:
                 report = self.run_report(root).read_text(encoding="utf-8")
 
-            self.assertEqual(checks.call_count, 2)
+            self.assertEqual(checks.call_count, 3)
             self.assertIn("| Parse all `src/**/*.py` with Python AST | **PASS** |", report)
             self.assertIn("| `python -m compileall -q src` | **FAIL** |", report)
             self.assertIn("| `python -m unittest discover -s tests -p 'test_*.py' -v` | **PASS** |", report)
