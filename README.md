@@ -38,7 +38,7 @@ flowchart LR
 | Web dashboard | [`src/api/dashboard.py`](src/api/dashboard.py) | Streamlit UI for API endpoints |
 | Sentiment | [`src/nlp/finbert_service.py`](src/nlp/finbert_service.py) | FinBERT inference on supplied text |
 | Risk | [`src/risk/var_calc.py`](src/risk/var_calc.py) | Historical VaR using an equal-weight return series |
-| Optimisation | [`src/risk/optimiser.py`](src/risk/optimiser.py) | PyPortfolioOpt integration, currently incomplete |
+| Optimisation | [`src/risk/optimiser.py`](src/risk/optimiser.py) | Maximum-Sharpe optimisation; annualization needs validation |
 | Disclosures | [`src/data/text_loader.py`](src/data/text_loader.py) | Experimental SEC data retrieval, needs validation |
 
 ## Historical VaR: what the number means
@@ -74,7 +74,7 @@ Browse the API documentation at `http://127.0.0.1:8000/docs` and the dashboard a
 ## Known limitations and planned improvements
 
 - **SEC disclosures:** replace/validate the `EntityRiskFactors` company-concept request in `text_loader.py` against actual EDGAR 10-K filings; add a compliant descriptive User-Agent, request backoff, caching, and reproducible fixture tests.
-- **Portfolio weights:** `optimiser.py` constructs an `EfficientFrontier` but does not call an optimisation method before returning weights. Also standardize annualization and explicitly document assumptions.
+- **Portfolio weights:** `optimiser.py` calls `EfficientFrontier.max_sharpe()` before returning cleaned weights. It currently supplies unannualized per-observation arithmetic mean returns and covariance; these are not aligned with an annual risk-free rate for daily price data. Standardize annualization and the risk-free-rate convention, and validate the resulting weights before relying on them.
 - **Reliability:** add schema validation, external API error handling, unit/integration tests, CI, dependency pinning, and Docker configuration.
 - **Evaluation:** publish data-source provenance, a fixed-ticker benchmark, latency/cost measurements, sentiment evaluation, and failures.
 - **Interpretability:** explain the meaning and limitations of FinBERT confidence and of historical VaR, and separate investment signals from raw metrics.
